@@ -1,6 +1,7 @@
 require 'sinatra'
-require 'oauth2'
-require 'json'
+require 'google/api_client'
+require 'google/api_client/client_secrets'
+#require 'json'
 require 'yaml'
 
 #
@@ -12,7 +13,11 @@ require 'yaml'
 configure do
   this_dir = File.dirname(__FILE__)
   # setting one option
-  set :config, YAML.load_file("#{this_dir}/config.yml")
+  config = YAML.load_file("#{this_dir}/config.yml")
+  set :g_credentials, {'web' => config['web']}
+  # client_id needed in mult places so set an easy access key
+  set :g_client_id, config['web']['client_id']
+  set :g_scopes, config['scopes']
 end
 
 enable :sessions
@@ -23,57 +28,76 @@ get '/' do
   session['state'] = state
   erb :index,
       :locals => {
-        :client_id => settings.config['google_client_id'],
+        :client_id => settings.g_client_id,
         :state     => state
       }
 end
 
 # @todo Move out of global scope
 # Build the global client
-$credentials = Google::APIClient::ClientSecrets.load
+$credentials = Google::APIClient::ClientSecrets.new(settings.g_credentials)
 $authorization = Signet::OAuth2::Client.new(
     :authorization_uri => $credentials.authorization_uri,
     :token_credential_uri => $credentials.token_credential_uri,
     :client_id => $credentials.client_id,
     :client_secret => $credentials.client_secret,
     :redirect_uri => $credentials.redirect_uris.first,
-    :scope => PLUS_LOGIN_SCOPE)
+    :scope => settings.g_scopes.join(' '))
 $client = Google::APIClient.new
 
 post '/authorize' do
 
   # @see https://github.com/google/google-api-ruby-client
   if !session[:token]
-    # Make sure that the state we set on the client matches the state sent
-    # in the request to protect against request forgery.
-    if session[:state] == params[:state]
-      # Upgrade the code into a token object.
-      $authorization.code = request.body.read
-      $authorization.fetch_access_token!
-      $client.authorization = $authorization
 
-      id_token = $client.authorization.id_token
-      encoded_json_body = id_token.split('.')[1]
-      # Base64 must be a multiple of 4 characters long, trailing with '='
-      encoded_json_body += (['='] * (encoded_json_body.length % 4)).join('')
-      json_body = Base64.decode64(encoded_json_body)
-      body = JSON.parse(json_body)
-      # You can read the Google user ID in the ID token.
-      # "sub" represents the ID token subscriber which in our case
-      # is the user ID. This sample does not use the user ID.
-      gplus_id = body['sub']
-
-      # Serialize and store the token in the user's session.
-      token_pair = TokenPair.new
-      token_pair.update_token!($client.authorization)
-      session[:token] = token_pair
-    else
-      halt 401, 'The client state does not match the server state.'
+    # check for oauth2 'state'.
+    # @see https://developers.google.com/+/web/signin/server-side-flow
+    unless session[:state] == params[:state]
+      halt 401, 'Client oauth state value does not match'
     end
+
+    # Exchange 'code' for access token
+    $authorization.code = request.body.read
+    $authorization.fetch_access_token!
+    $client.authorization = $authorization
+
+    session[:token] = storable_token($client.authorization)
     status 200
   else
+    # @todo determine consistent response format
     content_type :json
     'Current user is already connected.'.to_json
   end
 
 end
+
+##
+# Disconnect the user by revoking the stored token and removing session objects.
+post '/logout' do
+  if session[:token]
+    token = session[:token][:refresh_token] || session[:token][:access_token]
+    # You could reset the state at this point, but as-is it will still stay unique
+    # to this user and we're avoiding resetting the client state.
+    # session.delete(:state)
+    session.delete(:token)
+
+    # Send the revocation request and return the result.
+    # @todo test invalid response here
+    revokePath = 'https://accounts.google.com/o/oauth2/revoke?token=' + token
+    uri = URI.parse(revokePath)
+    request = Net::HTTP.new(uri.host, uri.port)
+    request.use_ssl = true
+    status request.get(uri.request_uri).code
+  end
+
+end
+
+def storable_token(authorization)
+  {
+      :refresh_token => authorization.refresh_token,
+      :access_token => authorization.access_token,
+      :expires_in => authorization.expires_in,
+      :issued_at => Time.at(authorization.issued_at)
+  }
+end
+

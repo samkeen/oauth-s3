@@ -17,6 +17,8 @@
     </div>
     <div id="result"></div>
 
+    <button id="disconnect" >Disconnect your Google account from this app</button>
+
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
     <script type="text/javascript">
         (function () {
@@ -63,6 +65,31 @@
                 // console.log('There was an error: ' + authResult['error']);
             }
         }
+        /**
+         * Calls the server endpoint to disconnect the app for the user.
+         */
+        function disconnectServer() {
+            // Revoke the server tokens
+            $.ajax({
+                type: 'POST',
+                url: window.location.href + 'logout',
+                async: false,
+                success: function(result) {
+                    console.log('revoke response: ' + result);
+                    $('#authOps').hide();
+                    $('#profile').empty();
+                    $('#visiblePeople').empty();
+                    $('#authResult').empty();
+                    $('#gConnect').show();
+                },
+                error: function(e) {
+                    console.log(e);
+                }
+            });
+        }
+        $(document).ready(function() {
+            $('#disconnect').click(disconnectServer);
+        });
     </script>
 </body>
 </html>
