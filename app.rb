@@ -18,9 +18,16 @@ configure do
   # client_id needed in mult places so set an easy access key
   set :g_client_id, config['web']['client_id']
   set :g_scopes, config['scopes']
+  set :unauthenticated_routes, %w(/ /logout /authenticate)
 end
 
 enable :sessions
+
+# enforce authentication on all routes except those in whitelist
+before // do
+  pass if settings.unauthenticated_routes.include? request.path_info
+  authenticate!
+end
 
 get '/' do
   require 'securerandom'
@@ -45,7 +52,7 @@ $authorization = Signet::OAuth2::Client.new(
     :scope => settings.g_scopes.join(' '))
 $client = Google::APIClient.new
 
-post '/authorize' do
+post '/authenticate' do
 
   # @see https://github.com/google/google-api-ruby-client
   if !session[:token]
@@ -99,5 +106,12 @@ def storable_token(authorization)
       :expires_in => authorization.expires_in,
       :issued_at => Time.at(authorization.issued_at)
   }
+end
+
+def authenticate!
+  # Verify oauth token in session
+  unless session[:token]
+    halt 401, 'No authentication token present'
+  end
 end
 

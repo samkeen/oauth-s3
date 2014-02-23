@@ -40,7 +40,7 @@
                 // Send the code to the server
                 $.ajax({
                     type: 'POST',
-                    url: window.location.href + '/authorize?state=<%= state %>',
+                    url: window.location.href + '/authenticate?state=<%= state %>',
                     contentType: 'application/octet-stream; charset=utf-8',
                     success: function(result) {
                         // Handle or verify the server response if necessary.
