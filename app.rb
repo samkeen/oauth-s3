@@ -69,6 +69,10 @@ post '/authenticate' do
     $client.authorization = $authorization
 
     session[:token] = storable_token($client.authorization)
+
+    google_id = get_google_id
+
+
     status 200
   else
     # @todo determine consistent response format
@@ -113,5 +117,18 @@ def authenticate!
   unless session[:token]
     halt 401, 'No authentication token present'
   end
+end
+
+def get_google_id
+  id_token = $client.authorization.id_token
+  encoded_json_body = id_token.split('.')[1]
+  # Base64 must be a multiple of 4 characters long, trailing with '='
+  encoded_json_body += (['='] * (encoded_json_body.length % 4)).join('')
+  json_body = Base64.decode64(encoded_json_body)
+  body = JSON.parse(json_body)
+  # You can read the Google user ID in the ID token.
+  # "sub" represents the ID token subscriber which in our case
+  # is the user ID. This sample does not use the user ID.
+  body['sub']
 end
 
