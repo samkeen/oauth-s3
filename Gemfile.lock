@@ -28,6 +28,8 @@ GEM
     multi_json (1.8.4)
     multipart-post (2.0.0)
     rack (1.5.2)
+    rack-flash3 (1.0.5)
+      rack
     rack-protection (1.5.2)
       rack
     retriable (1.4.1)
@@ -49,4 +51,5 @@ PLATFORMS
 DEPENDENCIES
   google-api-client (>= 0.6.2)
   json
+  rack-flash3
   sinatra

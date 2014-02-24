@@ -1,3 +1,19 @@
 # get your credentials here: https://cloud.google.com/console/project
-google_client_id:
-google_client_secret:
+
+# Google Web Oauth Settings
+application_settings:
+  application_name: << YOUR APP NAME HERE >>
+  application_version: << YOUR APP VERSION HERE >>
+web:
+  client_id: << ADD YOUR CLIENT ID HERE >>
+  client_secret: << ADD YOUR CLIENT SECRET HERE >>
+  redirect_uris:
+    - postmessage
+  auth_uri: https://accounts.google.com/o/oauth2/auth
+  token_uri: https://accounts.google.com/o/oauth2/token
+
+scopes:
+#  - https://www.googleapis.com/auth/plus.login
+## If you are just getting email (or Apps domain), you only
+#  need plus.profile.emails.read
+  - https://www.googleapis.com/auth/plus.profile.emails.read

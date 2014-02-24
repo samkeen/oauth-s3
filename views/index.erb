@@ -4,10 +4,14 @@
   <title></title>
 </head>
 <body>
+    <p><%= flash[:notice].to_s %></p>
 
+    <div id="logout_button">
+      <a href="/logout">Logout</a>
+    </div>
     <div id="signinButton">
       <span class="g-signin"
-            data-scope="https://www.googleapis.com/auth/plus.login https://www.googleapis.com/auth/plus.profile.emails.read"
+            data-scope="<%= scopes %>"
             data-clientid="<%= client_id %>"
             data-redirecturi="postmessage"
             data-accesstype="offline"
@@ -15,9 +19,6 @@
             data-callback="signInCallback">
       </span>
     </div>
-    <div id="result"></div>
-
-    <button id="disconnect" >Disconnect your Google account from this app</button>
 
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
     <script type="text/javascript">
@@ -31,6 +32,7 @@
         })();
     </script>
     <script type="text/javascript">
+        var logged_in = <%= logged_in? ? 'true' : 'false' %>;
         function signInCallback(authResult) {
             if (authResult['code']) {
 
@@ -65,31 +67,6 @@
                 // console.log('There was an error: ' + authResult['error']);
             }
         }
-        /**
-         * Calls the server endpoint to disconnect the app for the user.
-         */
-        function disconnectServer() {
-            // Revoke the server tokens
-            $.ajax({
-                type: 'POST',
-                url: window.location.href + 'logout',
-                async: false,
-                success: function(result) {
-                    console.log('revoke response: ' + result);
-                    $('#authOps').hide();
-                    $('#profile').empty();
-                    $('#visiblePeople').empty();
-                    $('#authResult').empty();
-                    $('#gConnect').show();
-                },
-                error: function(e) {
-                    console.log(e);
-                }
-            });
-        }
-        $(document).ready(function() {
-            $('#disconnect').click(disconnectServer);
-        });
     </script>
 </body>
 </html>
