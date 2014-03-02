@@ -1,6 +1,13 @@
-# get your credentials here: https://cloud.google.com/console/project
+# AWS credentials
+# see http://docs.aws.amazon.com/AWSRubySDK/latest/index.html#Basic_Configuration
+aws:
+  access_key_id: << YOUR ACCESS KEY ID >>
+  secret_access_key: << YOUR SECRET ACCESS KEY >>
+  region: us-west-2
+
 
 # Google Web Oauth Settings
+# get your credentials here: https://cloud.google.com/console/project
 application_settings:
   application_name: << YOUR APP NAME HERE >>
   application_version: << YOUR APP VERSION HERE >>

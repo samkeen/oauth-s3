@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'google/api_client'
 require 'google/api_client/client_secrets'
+require 'aws-sdk'
 #require 'json'
 require 'yaml'
 require 'rack-flash'
@@ -19,9 +20,12 @@ configure do
   set :g_client_id, config['web']['client_id']
   set :g_scopes, config['scopes']
   set :application_settings, config['application_settings']
-  set :unauthenticated_routes, %w(/ /logout /authenticate)
+  set :unauthenticated_routes, %w(/ /logout /authenticate /home)
+  # AWS
+  set :aws, config['aws']
 end
 
+#NOW PUT HIDE LOGIC IN PAGE JS
 
 helpers do
 
@@ -101,7 +105,6 @@ post '/authenticate' do
 
       if domain != 'janrain.com'
         logout
-        redirect to('/')
       end
 
 
@@ -123,8 +126,33 @@ end
 # Disconnect the user by revoking the stored token and removing session objects.
 get '/logout' do
   logout
-  redirect to('/')
+  redirect to('/home')
 end
+
+get '/bucket/:bucket_name' do
+  bucket_name = params['bucket_name']
+
+  bucket_items = []
+  begin
+    AWS.config(settings.aws)
+    s3 = AWS::S3.new
+    bucket = s3.buckets[bucket_name]
+    unless bucket.exists?
+      halt 404, "Unknown Bucket: #{bucket_name}"
+    end
+    bucket.objects.each do |obj|
+      bucket_items << obj.key
+    end
+  rescue AWS::S3::Errors::PermanentRedirect
+    halt 404, "Unknown Bucket: '#{bucket_name}' and/or you do not have proper access rights"
+  rescue Exception => e
+    halt 500, "Unexpected Error from AWS: #{e}"
+  end
+
+  bucket_items.inspect
+end
+
+
 
 def storable_token(authorization)
   {
