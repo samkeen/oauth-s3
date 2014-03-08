@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Home</title>
+</head>
+<body>
+
+    <a href="/logout">Logout</a>
+
+    <ul>
+    <% bucket_objects.each do |bucket_object| %>
+       <li><a href="<%= proxy_url(bucket_name, bucket_object.key) %>"><%= bucket_object.key %></a></li>
+    <% end %>
+    </ul>
+
+</body>
+</html>

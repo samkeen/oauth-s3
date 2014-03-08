@@ -22,7 +22,10 @@ Attach a User Policy
         "s3:Get*",
         "s3:List*"
       ],
-      "Resource": "arn:aws:s3:::BUCKET-NAME"
+      "Resource": [
+        "arn:aws:s3:::BUCKET-NAME",
+        "arn:aws:s3:::BUCKET-NAME/*"
+      ]
     }
   ]
 }

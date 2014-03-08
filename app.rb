@@ -1,4 +1,5 @@
 require 'sinatra'
+require 'sinatra/streaming'
 require 'google/api_client'
 require 'google/api_client/client_secrets'
 require 'aws-sdk'
@@ -29,8 +30,13 @@ end
 
 helpers do
 
+  # @return [Boolean]
   def logged_in?
     session.has_key?(:token)
+  end
+
+  def proxy_url(bucket, item_key)
+    "/proxy_item/#{bucket}?path=#{URI.escape(item_key)}"
   end
 
 end
@@ -129,10 +135,9 @@ get '/logout' do
   redirect to('/home')
 end
 
-get '/bucket/:bucket_name' do
+get '/proxy_item/:bucket_name' do
   bucket_name = params['bucket_name']
-
-  bucket_items = []
+  item_path = params['path']
   begin
     AWS.config(settings.aws)
     s3 = AWS::S3.new
@@ -140,16 +145,49 @@ get '/bucket/:bucket_name' do
     unless bucket.exists?
       halt 404, "Unknown Bucket: #{bucket_name}"
     end
-    bucket.objects.each do |obj|
-      bucket_items << obj.key
+
+    content_type bucket.objects[item_path].content_type
+
+    stream do |out|
+      bucket.objects[item_path].read do |chunk|
+        out.write(chunk)
+      end
     end
+
+  rescue AWS::S3::Errors::PermanentRedirect
+    halt 404, "Unknown Bucket: '#{bucket_name}' and/or you do not have proper access rights"
+  rescue AWS::S3::Errors::NoSuchKey
+    halt 404, "Unknown Key: '#{item_path}' for Bucket: '#{bucket_name}' and/or you do not have proper access rights"
+  rescue Exception => e
+    halt 500, "Unexpected Error from AWS: #{e}"
+  end
+end
+
+get '/bucket/:bucket_name' do
+  bucket_name = params['bucket_name']
+
+  begin
+    AWS.config(settings.aws)
+    s3 = AWS::S3.new
+    bucket = s3.buckets[bucket_name]
+    unless bucket.exists?
+      halt 404, "Unknown Bucket: #{bucket_name}"
+    end
+    bucket_objects = bucket.objects
+
   rescue AWS::S3::Errors::PermanentRedirect
     halt 404, "Unknown Bucket: '#{bucket_name}' and/or you do not have proper access rights"
   rescue Exception => e
     halt 500, "Unexpected Error from AWS: #{e}"
   end
 
-  bucket_items.inspect
+  erb(
+      :bucket,
+      :locals => {
+          :bucket_name    => bucket_name,
+          :bucket_objects => bucket_objects
+      }
+  )
 end
 
 
